@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FlowState — Your Life, Leveled Up</title>
+<meta name="description" content="FlowState turns real habits, routines, and goals into an RPG character sheet. Build streaks, complete flows, level up your stats. Available on iOS." />
+<meta name="theme-color" content="#07070a" />
+<link rel="icon" href="logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { fontFamily: {
+      sans: ['Manrope', 'sans-serif'],
+      mono: ['"Geist Mono"', 'ui-monospace', 'monospace'],
+    } } }
+  }
+</script>
+<style>
+  *,body,html { font-family: 'Manrope', sans-serif; }
+
+  html { scroll-behavior: smooth; }
+  body { background: #07070a; }
+
+  ::selection { background: rgba(109,82,208,0.38); color: #ffffff; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
+
+  :focus-visible { outline: 2px solid #7C5CE8; outline-offset: 3px; border-radius: 4px; }
+
+  .mesh-bg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      radial-gradient(ellipse 900px 700px at 5% 10%, rgba(90,60,200,0.18), transparent 55%),
+      radial-gradient(ellipse 700px 700px at 95% 15%, rgba(70,40,180,0.14), transparent 55%),
+      radial-gradient(ellipse 1000px 800px at 50% 110%, rgba(80,50,190,0.10), transparent 60%);
+  }
+
+  .grain {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    opacity: 0.03; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .glass { background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07); }
+  .glass-strong { background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.09); }
+  .glass-card { background: rgba(109,82,208,0.06); border: 1px solid rgba(109,82,208,0.18); }
+
+  .accent { color: #7C5CE8; }
+  .accent-glow { text-shadow: 0 0 40px rgba(109,82,208,0.5); }
+
+  /* --- animations --- */
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.85s cubic-bezier(0.16,1,0.3,1), transform 0.85s cubic-bezier(0.16,1,0.3,1); }
+  .reveal.in-view { opacity: 1; transform: translateY(0); }
+
+  .fade-up { opacity: 0; transform: translateY(16px); }
+  .fade-up.in-view { animation: fade-up-anim 0.7s cubic-bezier(0.16,1,0.3,1) forwards; }
+  @keyframes fade-up-anim { to { opacity: 1; transform: translateY(0); } }
+
+  @keyframes float-slow { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .float { animation: float-slow 5.5s ease-in-out infinite; }
+
+  .xp-bar-fill { transition: width 1.4s cubic-bezier(0.16,1,0.3,1); }
+
+  .phone-tilt { transition: transform 0.18s ease-out; transform-style: preserve-3d; }
+
+  /* phone screenshot cards */
+  .phone-card { transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), border-color 0.3s ease; }
+  .phone-card:hover { transform: translateY(-6px); }
+
+  .btn-primary {
+    background: #14141b;
+    color: #fff;
+    border-radius: 999px;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    font-size: 0.875rem;
+    padding: 0.75rem 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .btn-primary:hover { background: #14141b; box-shadow: 0 0 14px -4px rgba(209, 202, 235, 0.4); transform: translateY(-1px); }
+  .btn-primary:active { transform: scale(0.97); }
+
+  .btn-ghost {
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.7);
+    border-radius: 999px;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.75rem 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid rgba(255,255,255,0.10);
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.07); color: #fff; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal,.fade-up { opacity:1!important; transform:none!important; transition:none!important; animation:none!important; }
+    .float { animation:none!important; }
+    .phone-tilt { transition:none!important; }
+    .phone-card { transition:none!important; }
+  }
+</style>
+</head>
+<body class="bg-[#07070a] text-[#f0f0f4] antialiased overflow-x-hidden">
+<div class="mesh-bg" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ═══════════ NAV ═══════════ -->
+<header class="fixed top-0 inset-x-0 z-50 backdrop-blur-md bg-[#07070a]/65 border-b border-white/[0.06]">
+  <div class="mx-auto max-w-7xl px-6 lg:px-10 h-[68px] flex items-center justify-between">
+
+    <a href="#top" class="flex items-center gap-2.5" aria-label="FlowState home">
+      <img src="logo.png" alt="FlowState logo" width="28" height="28" class="select-none" />
+      <span class="font-sans font-bold tracking-tight text-[15px] text-white">FlowState</span>
+    </a>
+
+    <nav class="hidden md:flex items-center gap-7">
+      <a href="#screenshots" class="font-sans text-sm text-white/50 hover:text-white/90 transition-colors">App content</a>
+      <a href="#mission-control" class="font-sans text-sm text-white/50 hover:text-white/90 transition-colors">Dashboard</a>
+    </nav>
+
+    <a href="https://apps.apple.com/app/flowstate/YOUR_APP_ID" target="_blank" rel="noopener noreferrer" class="btn-primary text-sm p-3 py-2 px-3.5">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+      Download on iOS
+    </a>
+  </div>
+</header>
+
+<main class="relative z-10">
+
+  <!-- ═══════════ HERO ═══════════ -->
+  <section id="top" class="relative min-h-screen flex items-center pt-28 pb-20 px-6 lg:px-10">
+    <div class="mx-auto max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+
+      <!-- LEFT -->
+      <div>
+        
+
+        <h1 class="reveal [transition-delay:80ms] font-sans font-extrabold leading-[1.0] tracking-[-0.03em] text-[clamp(2.4rem,6.5vw,4.8rem)]">
+          <span class="block text-white">Your life,</span>
+          <span class="block bg-gradient-to-r from-[#8B78ED] via-[#6D52D0] to-[#5A40C0] bg-clip-text text-transparent" style="-webkit-background-clip:text;background-clip:text;">leveled up.</span>
+        </h1>
+
+        <p class="reveal [transition-delay:160ms] font-sans text-base text-white/50 mt-5 max-w-[420px] leading-[1.75] font-medium">
+          Habits become XP. Streaks become stats. FlowState turns your real-life discipline into a character sheet that actually grows with you.
+        </p>
+
+        <div class="reveal [transition-delay:240ms] flex flex-wrap items-center gap-3 mt-8">
+          <a href="https://apps.apple.com/app/flowstate/YOUR_APP_ID" target="_blank" rel="noopener noreferrer" class="btn-primary">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            Download on the App Store
+          </a>
+        </div>
+
+        <!-- stat pills -->
+        <div class="reveal [transition-delay:320ms] flex flex-wrap gap-5 mt-10">
+          <div>
+            <p class="font-sans font-bold text-xl text-white">47<span class="text-[#6D52D0]">+</span></p>
+            <p class="font-sans text-xs text-white/40 font-medium mt-0.5">avg. streak days</p>
+          </div>
+          <div class="w-px bg-white/[0.08]"></div>
+          <div>
+            <p class="font-sans font-bold text-xl text-white">5<span class="text-[#6D52D0]"> pillars</span></p>
+            <p class="font-sans text-xs text-white/40 font-medium mt-0.5">Habits · Flows · Goals · Dashboard · RPG</p>
+          </div>
+          <div class="w-px bg-white/[0.08]"></div>
+          <div>
+            <p class="font-sans font-bold text-xl text-white">Unlimited</p>
+            <p class="font-sans text-xs text-white/40 font-medium mt-0.5">XP ceiling</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT — phone mock -->
+      <div class="relative flex justify-center lg:justify-end">
+        <!-- floating chips -->
+        
+        <div class="float hidden sm:block absolute right-0 bottom-20 z-20 glass-strong rounded-2xl px-4 py-3 shadow-2xl" style="animation-delay:1.4s" aria-hidden="true">
+  <p class="font-mono text-[9px] text-[#7C5CE8] uppercase tracking-widest flex items-center gap-1">
+    <span style="font-weight: 800; font-size: 10px;">Level Up</span>
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up">
+      <path d="m5 12 7-7 7 7"/>
+      <path d="M12 19V5"/>
+    </svg>
+  </p>
+  <p class="font-sans text-sm font-bold text-white mt-0.5">Discipline Level 84</p>
+</div>
+
+        <!-- phone frame -->
+        <div id="phone-mock" class="phone-tilt relative w-[250px] sm:w-[272px] rounded-[52px] border border-white/[0.09] bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-3 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.9),0_0_60px_-20px_rgba(109,82,208,0.3)]" aria-label="App preview">
+          <div class="relative w-full aspect-[9/19.5] rounded-[42px] bg-[#0b0b12] overflow-hidden border border-black">
+            <!-- notch -->
+            <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-[80px] h-[22px] bg-black rounded-full z-30"></div>
+            <!-- status bar -->
+            <div class="absolute top-3 inset-x-0 flex justify-between px-6 font-mono text-[9px] text-white/60 z-20">
+              <span>9:41</span><span>5G ▮▮▮</span>
+            </div>
+            <!-- screen content -->
+            <div class="absolute inset-0 pt-11 px-3.5 pb-3.5 flex flex-col">
+              <!-- header -->
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <p class="font-mono text-[8px] text-white/30 uppercase tracking-widest">Mission Control</p>
+                  <p class="font-sans text-[11px] font-bold text-white">Good morning</p>
+                </div>
+                <span class="font-mono text-[9px] text-[#7C5CE8] border border-[#6D52D0]/50 rounded-full px-2 py-0.5">LVL 12</span>
+              </div>
+              <!-- xp -->
+              <div class="glass rounded-lg p-2.5 mb-2.5">
+                <div class="flex justify-between font-mono text-[8px] text-white/40 mb-1"><span>XP PROGRESS</span><span>71%</span></div>
+                <div class="h-1.5 rounded-full bg-white/[0.08]"><div class="h-full w-[71%] rounded-full bg-gradient-to-r from-[#5A40C0] to-[#8B78ED]"></div></div>
+              </div>
+              <!-- stats -->
+              <div class="grid grid-cols-3 gap-1.5 mb-2.5">
+                <div class="glass rounded-lg p-2 text-center"><p class="font-mono text-[7px] text-white/30">DISC</p><p class="font-sans text-[11px] font-bold text-[#8B78ED]">84</p></div>
+                <div class="glass rounded-lg p-2 text-center"><p class="font-mono text-[7px] text-white/30">FOCS</p><p class="font-sans text-[11px] font-bold text-[#8B78ED]">67</p></div>
+                <div class="glass rounded-lg p-2 text-center"><p class="font-mono text-[7px] text-white/30">CONS</p><p class="font-sans text-[11px] font-bold text-[#8B78ED]">91</p></div>
+              </div>
+              <!-- flow -->
+              <div class="glass rounded-lg p-2.5 flex-1">
+                <p class="font-mono text-[7px] text-white/30 uppercase tracking-widest mb-1.5">Active Flow</p>
+                <div class="space-y-1.5">
+                  <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#6D52D0]/20 border border-[#6D52D0] flex items-center justify-center text-[5px] text-[#8B78ED]">✓</span><span class="font-sans text-[9px] text-white/70 font-medium">Deep Work Block</span></div>
+                  <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#6D52D0]/20 border border-[#6D52D0] flex items-center justify-center text-[5px] text-[#8B78ED]">✓</span><span class="font-sans text-[9px] text-white/70 font-medium">Recovery Walk</span></div>
+                  <div class="flex items-center gap-1.5"><span class="relative w-3 h-3 rounded-full border border-[#6D52D0] animate-pulse"></span><span class="font-sans text-[9px] text-[#8B78ED] font-medium">Review &amp; Log</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- side buttons -->
+          <span class="absolute -left-[1px] top-[96px] w-[2px] h-[26px] bg-white/[0.08] rounded-r"></span>
+          <span class="absolute -left-[1px] top-[134px] w-[2px] h-[44px] bg-white/[0.08] rounded-r"></span>
+          <span class="absolute -right-[1px] top-[126px] w-[2px] h-[58px] bg-white/[0.08] rounded-l"></span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════ FEATURES STRIP ═══════════ -->
+  <section id="features" class="relative py-14 border-y border-white/[0.05]">
+    <div class="mx-auto max-w-7xl px-6 lg:px-10">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-y-8 gap-x-6">
+        <div class="reveal flex flex-col items-start gap-2">
+          <div class="h-8 w-8 rounded-lg bg-[#6D52D0]/15 border border-[#6D52D0]/30 flex items-center justify-center">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B78ED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <p class="font-sans font-semibold text-sm text-white">Mission Control</p>
+          <p class="font-sans text-xs text-white/40 leading-relaxed">All your stats in one command center</p>
+        </div>
+        <div class="reveal [transition-delay:60ms] flex flex-col items-start gap-2">
+          <div class="h-8 w-8 rounded-lg bg-[#6D52D0]/15 border border-[#6D52D0]/30 flex items-center justify-center">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B78ED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3z"/></svg>
+          </div>
+          <p class="font-sans font-semibold text-sm text-white">Flows</p>
+          <p class="font-sans text-xs text-white/40 leading-relaxed">Sequential routines that lock in focus</p>
+        </div>
+        <div class="reveal [transition-delay:120ms] flex flex-col items-start gap-2">
+          <div class="h-8 w-8 rounded-lg bg-[#6D52D0]/15 border border-[#6D52D0]/30 flex items-center justify-center">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B78ED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </div>
+          <p class="font-sans font-semibold text-sm text-white">Habit Tracking</p>
+          <p class="font-sans text-xs text-white/40 leading-relaxed">Streaks, momentum grids, daily reps</p>
+        </div>
+        <div class="reveal [transition-delay:180ms] flex flex-col items-start gap-2">
+          <div class="h-8 w-8 rounded-lg bg-[#6D52D0]/15 border border-[#6D52D0]/30 flex items-center justify-center">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B78ED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+          </div>
+          <p class="font-sans font-semibold text-sm text-white">Goals</p>
+          <p class="font-sans text-xs text-white/40 leading-relaxed">Long-horizon targets with live progress</p>
+        </div>
+        <div class="reveal [transition-delay:240ms] flex flex-col items-start gap-2">
+          <div class="h-8 w-8 rounded-lg bg-[#6D52D0]/15 border border-[#6D52D0]/30 flex items-center justify-center">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B78ED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <p class="font-sans font-semibold text-sm text-white">RPG Character</p>
+          <p class="font-sans text-xs text-white/40 leading-relaxed">Discipline, Grit, Focus, Consistency and Resilience. Leveling up as you improve.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ SCREENSHOTS ═══════════ -->
+  <section id="screenshots" class="relative py-24 md:py-32 px-6 lg:px-10">
+    <div class="mx-auto max-w-7xl">
+
+      <div class="reveal mb-14">
+        <span class="font-mono text-[11px] tracking-[0.2em] text-[#7C5CE8] uppercase">// The App</span>
+        <h2 class="font-sans font-bold text-3xl sm:text-4xl mt-2.5 tracking-tight text-white">See it in action.</h2>
+        <p class="font-sans text-[15px] text-white/45 mt-3 max-w-lg leading-relaxed font-medium">Every screen built around one principle: less friction between intent and execution.</p>
+      </div>
+
+      <!-- Screenshot cards — 5 slots, replace bg-placeholder with your real screenshots -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-16">
+
+        <!-- CARD 1 — Mission Control -->
+        <div class="phone-card reveal [transition-delay:0ms] flex flex-col gap-3">
+          <div class="relative rounded-[36px] overflow-hidden border border-white/[0.08] bg-[#0c0c14] aspect-[9/19.4] hover:border-[#6D52D0]/40 transition-colors duration-300 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]">
+            <!-- REPLACE THIS DIV WITH YOUR SCREENSHOT IMAGE -->
+            <img src="FS_screenshot_8.jpg" alt="mission-control dashboard image">
+            <!-- notch -->
+            <div class="absolute top-2 left-1/2 -translate-x-1/2 w-[60px] h-[16px] bg-black rounded-full z-10 pointer-events-none"></div>
+          </div>
+          <div class="px-1">
+            <p class="font-sans font-semibold text-[13px] text-white">Mission Control</p>
+            <p class="font-sans text-[11px] text-white/35 mt-0.5 font-medium">Your command center</p>
+          </div>
+        </div>
+
+        <!-- CARD 2 — Flows -->
+        <div class="phone-card reveal [transition-delay:60ms] flex flex-col gap-3">
+          <div class="relative rounded-[36px] overflow-hidden border border-white/[0.08] bg-[#0c0c14] aspect-[9/19.4] hover:border-[#6D52D0]/40 transition-colors duration-300 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]">
+            <img src="FS_screenshot_1.PNG" alt="Flow screen image">
+            <div class="absolute top-2 left-1/2 -translate-x-1/2 w-[60px] h-[16px] bg-black rounded-full z-10 pointer-events-none"></div>
+          </div>
+          <div class="px-1">
+            <p class="font-sans font-semibold text-[13px] text-white">Flows</p>
+            <p class="font-sans text-[11px] text-white/35 mt-0.5 font-medium">Run your routines</p>
+          </div>
+        </div>
+
+        <!-- CARD 3 — Habit Tracking -->
+        <div class="phone-card reveal [transition-delay:120ms] flex flex-col gap-3">
+          <div class="relative rounded-[36px] overflow-hidden border border-white/[0.08] bg-[#0c0c14] aspect-[9/19.4] hover:border-[#6D52D0]/40 transition-colors duration-300 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]">
+            <img src="FS_screenshot_6.PNG" alt="Habit tracking screen image">
+            <div class="absolute top-2 left-1/2 -translate-x-1/2 w-[60px] h-[16px] bg-black rounded-full z-10 pointer-events-none"></div>
+          </div>
+          <div class="px-1">
+            <p class="font-sans font-semibold text-[13px] text-white">Habit Tracking</p>
+            <p class="font-sans text-[11px] text-white/35 mt-0.5 font-medium">Streaks &amp; momentum</p>
+          </div>
+        </div>
+
+        <!-- CARD 4 — Goals -->
+        <div class="phone-card reveal [transition-delay:180ms] flex flex-col gap-3">
+          <div class="relative rounded-[36px] overflow-hidden border border-white/[0.08] bg-[#0c0c14] aspect-[9/19.4] hover:border-[#6D52D0]/40 transition-colors duration-300 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]">
+            <img src="FS_screenshot_2.PNG" alt="Goal screen ">
+            <div class="absolute top-2 left-1/2 -translate-x-1/2 w-[60px] h-[16px] bg-black rounded-full z-10 pointer-events-none"></div>
+          </div>
+          <div class="px-1">
+            <p class="font-sans font-semibold text-[13px] text-white">Goals</p>
+            <p class="font-sans text-[11px] text-white/35 mt-0.5 font-medium">Long-term targets</p>
+          </div>
+        </div>
+
+        <!-- CARD 5 — RPG Character -->
+        <div class="phone-card reveal [transition-delay:240ms] flex flex-col gap-3">
+          <div class="relative rounded-[36px] overflow-hidden border border-white/[0.08] bg-[#0c0c14] aspect-[9/19.4] hover:border-[#6D52D0]/40 transition-colors duration-300 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]">
+            <img src="FS_screenshot_3.PNG" alt="RPG Character sheet screen">
+            <div class="absolute top-2 left-1/2 -translate-x-1/2 w-[60px] h-[16px] bg-black rounded-full z-10 pointer-events-none"></div>
+          </div>
+          <div class="px-1">
+            <p class="font-sans font-semibold text-[13px] text-white">RPG Character</p>
+            <p class="font-sans text-[11px] text-white/35 mt-0.5 font-medium">Stats that earn in real life</p>
+          </div>
+        </div>
+
+      </div>
+
+    
+
+    </div>
+  </section>
+
+  <!-- ═══════════ MISSION CONTROL BENTO ═══════════ -->
+  <section id="mission-control" class="relative py-24 md:py-28 px-6 lg:px-10">
+    <div class="mx-auto max-w-7xl">
+
+      <div class="reveal mb-12">
+        <span class="font-mono text-[11px] tracking-[0.2em] text-[#7C5CE8] uppercase">// Dashboard</span>
+        <h2 class="font-sans font-bold text-3xl sm:text-4xl mt-2.5 tracking-tight text-white">Four systems. One view.</h2>
+        <p class="font-sans text-[15px] text-white/45 mt-3 max-w-md leading-relaxed font-medium">Flows, streaks, goals, and stats sync the moment you close a real-world rep.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 lg:auto-rows-[minmax(130px,auto)] gap-4">
+
+        <!-- CHARACTER — signature card, spans wide -->
+        <div class="col-span-1 md:col-span-2 lg:col-span-7 lg:row-span-2 reveal glass-card rounded-2xl p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden hover:border-[#6D52D0]/40 transition-colors duration-500">
+          <div class="absolute -top-20 -right-20 w-56 h-56 rounded-full bg-[#6D52D0]/12 blur-3xl pointer-events-none" aria-hidden="true"></div>
+          <div class="relative flex items-start justify-between">
+            <div>
+              <span class="font-mono text-[10px] tracking-[0.2em] text-white/35 uppercase">Character</span>
+              <h3 class="font-sans text-xl font-bold mt-1 text-white">Operator Sheet</h3>
+            </div>
+            <div class="text-right">
+              <span class="font-mono text-[10px] text-white/35 uppercase tracking-widest block">Level</span>
+              <span class="font-sans text-4xl font-extrabold text-[#8B78ED] tracking-tight">12</span>
+            </div>
+          </div>
+
+          <div class="relative mt-5">
+            <div class="flex justify-between font-mono text-[10px] text-white/35 mb-1.5"><span>XP TO LEVEL 13</span><span>2,140 / 3,000</span></div>
+            <div class="h-2 rounded-full bg-white/[0.05]">
+              <div id="xp-bar-fill" data-target="71%" class="xp-bar-fill h-full rounded-full bg-gradient-to-r from-[#5A40C0] to-[#8B78ED]" style="width:0%"></div>
+            </div>
+          </div>
+
+          <div class="relative mt-5 grid grid-cols-3 gap-3">
+            <div>
+              <div class="flex justify-between font-mono text-[9px] text-white/35 mb-1"><span>FOCUS</span><span>84</span></div>
+              <div class="h-1.5 rounded-full bg-white/[0.05]"><div class="h-full w-[84%] rounded-full bg-[#7C5CE8]"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between font-mono text-[9px] text-white/35 mb-1"><span>VITALITY</span><span>67</span></div>
+              <div class="h-1.5 rounded-full bg-white/[0.05]"><div class="h-full w-[67%] rounded-full bg-[#7C5CE8]"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between font-mono text-[9px] text-white/35 mb-1"><span>INTELLECT</span><span>91</span></div>
+              <div class="h-1.5 rounded-full bg-white/[0.05]"><div class="h-full w-[91%] rounded-full bg-[#7C5CE8]"></div></div>
+            </div>
+          </div>
+
+          <div class="relative mt-5 flex flex-wrap items-center justify-between gap-3">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-[#6D52D0]/15 border border-[#6D52D0]/35 text-[#9B87E8] font-mono text-[10px] px-3 py-1.5">+1 FOCUS · Deep Work session logged</span>
+            <p class="font-sans text-sm text-white/35 font-medium">Every stat is earned. No filler XP.</p>
+          </div>
+        </div>
+
+        <!-- FLOWS -->
+        <div class="col-span-1 md:col-span-2 lg:col-span-5 lg:row-span-2 reveal glass rounded-2xl p-6 sm:p-8 flex flex-col hover:border-[#6D52D0]/30 transition-colors duration-500 [transition-delay:80ms]">
+          <div class="flex items-center justify-between mb-1">
+            <div>
+              <span class="font-mono text-[10px] tracking-[0.2em] text-white/35 uppercase">Flows</span>
+              <h3 class="font-sans text-lg font-bold mt-1 text-white">Deep Work Sequence</h3>
+            </div>
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7C5CE8] opacity-75"></span>
+              <span class="relative inline-flex h-2 w-2 rounded-full bg-[#7C5CE8]"></span>
+            </span>
+          </div>
+          <ol class="relative mt-5 space-y-4 flex-1">
+            <li class="flex gap-3.5">
+              <div class="flex flex-col items-center">
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-[#6D52D0]/15 border border-[#6D52D0]/50 text-[#8B78ED] text-[9px]"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-icon lucide-check"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <span class="w-px flex-1 bg-white/[0.07] mt-1"></span>
+              </div>
+              <div class="pb-1">
+                <p class="font-sans text-sm font-semibold text-white">Deep Work Block</p>
+                <p class="font-mono text-[10px] text-white/30">90 MIN · DONE</p>
+              </div>
+            </li>
+            <li class="flex gap-3.5">
+              <div class="flex flex-col items-center">
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-[#6D52D0]/15 border border-[#6D52D0]/50 text-[#8B78ED] text-[9px]"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-icon lucide-check"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <span class="w-px flex-1 bg-white/[0.07] mt-1"></span>
+              </div>
+              <div class="pb-1">
+                <p class="font-sans text-sm font-semibold text-white">Recovery Walk</p>
+                <p class="font-mono text-[10px] text-white/30">15 MIN · DONE</p>
+              </div>
+            </li>
+            <li class="flex gap-3.5">
+              <div class="flex flex-col items-center">
+                <span class="relative flex h-5 w-5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#6D52D0]/40"></span>
+                  <span class="relative flex h-5 w-5 items-center justify-center rounded-full bg-[#6D52D0]/15 border border-[#6D52D0]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#8B78ED]"></span>
+                  </span>
+                </span>
+                <span class="w-px flex-1 bg-white/[0.07] mt-1"></span>
+              </div>
+              <div class="pb-1">
+                <p class="font-sans text-sm font-semibold text-white">Review &amp; Log</p>
+                <p class="font-mono text-[10px] text-[#8B78ED]">10 MIN · RUNNING</p>
+              </div>
+            </li>
+            <li class="flex gap-3.5 opacity-40">
+              <div class="flex flex-col items-center">
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-white/[0.04] border border-white/10"></span>
+              </div>
+              <div>
+                <p class="font-sans text-sm font-semibold text-white">Evening Wind-down</p>
+                <p class="font-mono text-[10px] text-white/30">20 MIN · QUEUED</p>
+              </div>
+            </li>
+          </ol>
+          <p class="font-sans text-sm text-white/30 mt-3 font-medium">One tap to re-run. No decisions once you're in it.</p>
+        </div>
+
+        <!-- HABITS -->
+<div class="col-span-1 lg:col-span-6 reveal glass rounded-2xl p-6 sm:p-6 hover:border-[#6D52D0]/30 transition-colors duration-500 [transition-delay:160ms]">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <span class="font-mono text-[10px] tracking-[0.2em] text-white/35 uppercase">Habits</span>
+      <h3 class="font-sans text-lg font-bold mt-1 text-white">Momentum Grid</h3>
+    </div>
+    <div class="text-right">
+      <span class="font-sans text-3xl font-extrabold text-[#8B78ED] tracking-tight">119</span>
+      <span class="block font-mono text-[9px] text-white/30 uppercase tracking-widest">day streak</span>
+    </div>
+  </div>
+
+  <div
+  class="grid gap-1 w-full"
+  style="grid-template-columns: repeat(auto-fill, minmax(20px, 1fr));"
+  aria-hidden="true"
+>
+  <div class="aspect-square rounded-[2px] bg-[#6D52D0]/20"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/35"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/55"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/80"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/90"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/45"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/70"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/15"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/90"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/75"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/30"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/65"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/50"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/25"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/85"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/60"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/40"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/75"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/95"></div>
+  <div class="aspect-square rounded-[2px] bg-[#6D52D0]/20"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/35"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/55"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/80"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/90"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/45"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/70"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/15"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/90"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/75"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/30"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/65"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/50"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/25"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/85"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/60"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/40"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/75"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/95"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/20"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/35"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/55"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/80"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/90"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/45"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/70"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/15"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/90"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/75"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/30"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/65"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/50"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/25"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/85"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/60"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/40"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/75"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/95"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/20"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/35"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/55"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/80"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/90"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/45"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/70"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/15"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/90"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/75"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/30"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/65"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/50"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/25"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/85"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/60"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/40"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/75"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/95"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/20"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/35"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/55"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/80"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/90"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/45"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/70"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/15"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/90"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/75"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/30"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/65"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/50"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/25"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/85"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/60"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/40"></div>
+<div class="aspect-square rounded-[2px] bg-[#6D52D0]/75"></div>
+<div class="aspect-square rounded-[2px] bg-[#7C5CE8]/95"></div>
+
+  <!-- Add as many more squares as you like -->
+</div>
+
+  <p class="font-sans text-sm text-white/30 mt-3 font-medium">
+    The grid doesn't lie. Momentum is the whole game.
+  </p>
+</div>
+
+<!-- GOALS -->
+<div class="col-span-1 lg:col-span-6 reveal glass rounded-2xl p-6 sm:p-6 hover:border-[#6D52D0]/30 transition-colors duration-500 [transition-delay:240ms]">
+  <div class="mb-4">
+    <span class="font-mono text-[10px] tracking-[0.2em] text-white/35 uppercase">Goals</span>
+    <h3 class="font-sans text-lg font-bold mt-1 text-white">Active Targets</h3>
+  </div>
+
+  <div class="space-y-3">
+    <div>
+      <div class="flex justify-between font-sans text-sm mb-1">
+        <span class="text-white font-medium">Gym everyday</span>
+        <span class="font-mono text-[#8B78ED] text-[11px]">58%</span>
+      </div>
+      <div class="h-1.5 rounded-full bg-white/[0.05]">
+        <div class="h-full w-[58%] rounded-full bg-[#7C5CE8]"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="flex justify-between font-sans text-sm mb-1">
+        <span class="text-white font-medium">Read 20 books this year</span>
+        <span class="font-mono text-[#8B78ED] text-[11px]">65%</span>
+      </div>
+      <div class="h-1.5 rounded-full bg-white/[0.05]">
+        <div class="h-full w-[65%] rounded-full bg-[#7C5CE8]"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="flex justify-between font-sans text-sm mb-1">
+        <span class="text-white font-medium">Reach $10k per month</span>
+        <span class="font-mono text-[#8B78ED] text-[11px]">100%</span>
+      </div>
+      <div class="h-1.5 rounded-full bg-white/[0.05]">
+        <div class="h-full w-[100%] rounded-full bg-[#7C5CE8]"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="font-sans text-sm text-white/30 mt-3 font-medium">
+    Long-horizon targets, fuelled by the same habits you build daily.
+  </p>
+</div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ FINAL CTA ═══════════ -->
+  <section class="relative py-20 md:py-28 px-6 lg:px-10">
+    <div class="mx-auto max-w-3xl text-center reveal">
+      <h2 class="font-sans font-bold text-3xl sm:text-4xl md:text-5xl tracking-tight text-white leading-[1.1]">Start Leveling Up your real life.</h2>
+      <p class="font-sans text-[15px] text-white/40 mt-4 max-w-lg mx-auto leading-relaxed font-medium">FlowState is live on the App Store. Download and start building the character sheet for who you're becoming.</p>
+      <a href="https://apps.apple.com/app/flowstate/YOUR_APP_ID" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 mt-8 btn-primary text-[15px] px-7 py-4">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        Download on the App Store
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer class="relative z-10 border-t border-white/[0.06] px-6 lg:px-10 py-9">
+  <div class="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-5">
+    <div class="flex items-center gap-2.5">
+      <img src="logo.png" alt="FlowState logo" width="22" height="22" class="select-none" />
+      <span class="font-sans font-semibold tracking-tight text-sm text-white/70">FlowState</span>
+      <span class="font-mono text-xs text-white/25 ml-1.5">© <span id="year"></span> All rights reserved.</span>
+    </div>
+    <nav class="flex items-center gap-6 font-sans text-sm text-white/35" aria-label="Legal">
+      <a href="privacy.html" class="hover:text-white/80 transition-colors">Privacy Policy</a>
+      <a href="terms.html" class="hover:text-white/80 transition-colors">Terms of Service</a>
+      <a href="mailto:app.flowstateofficial@gmail.com" class="hover:text-white/80 transition-colors">Contact</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const revealEls = document.querySelectorAll('.reveal, .fade-up');
+
+  if (prefersReduced) {
+    revealEls.forEach(el => el.classList.add('in-view'));
+  } else {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) { entry.target.classList.add('in-view'); io.unobserve(entry.target); }
+      });
+    }, { threshold: 0.12 });
+    revealEls.forEach(el => io.observe(el));
+  }
+
+  // XP bar
+  const xpBar = document.getElementById('xp-bar-fill');
+  if (xpBar) {
+    const xpObs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) { xpBar.style.width = xpBar.dataset.target || '71%'; xpObs.unobserve(entry.target); }
+      });
+    }, { threshold: 0.3 });
+    xpObs.observe(xpBar);
+  }
+
+  // Phone tilt
+  const heroSection = document.querySelector('#top');
+  const phone = document.getElementById('phone-mock');
+  if (heroSection && phone && !prefersReduced && window.matchMedia('(min-width:1024px)').matches) {
+    heroSection.addEventListener('mousemove', (e) => {
+      const rect = heroSection.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      phone.style.transform = 'perspective(900px) rotateY(' + (x*7) + 'deg) rotateX(' + (-y*7) + 'deg)';
+    });
+    heroSection.addEventListener('mouseleave', () => {
+      phone.style.transform = 'perspective(900px) rotateY(0deg) rotateX(0deg)';
+    });
+  }
+});
+</script>
+</body>
+</html>
