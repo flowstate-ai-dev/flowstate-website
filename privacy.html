@@ -179,8 +179,8 @@
       <span class="font-mono text-xs text-white/25 ml-1.5">© <span id="year"></span> All rights reserved.</span>
     </div>
     <nav class="flex items-center gap-6 font-sans text-sm text-[#8b8d98]" aria-label="Legal">
-      <a href="index.html" class="hover:text-[#f5f5f7] transition-colors">Home</a>
-      <a href="terms.html" class="hover:text-[#f5f5f7] transition-colors">Terms of Service</a>
+      <a href="index" class="hover:text-[#f5f5f7] transition-colors">Home</a>
+      <a href="terms" class="hover:text-[#f5f5f7] transition-colors">Terms of Service</a>
     </nav>
   </div>
 </footer>
@@ -194,6 +194,23 @@
     if (window.scrollY > 400) btt.classList.remove('hidden'); else btt.classList.add('hidden');
   });
   btt.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+</script>
+<script>
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault(); // Prevents the default hash behavior
+
+        const targetId = this.getAttribute('href');
+        const targetElement = document.querySelector(targetId);
+
+        if (targetElement) {
+            // Smoothly scrolls to the section
+            targetElement.scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
+    });
+});
 </script>
 </body>
 </html>
